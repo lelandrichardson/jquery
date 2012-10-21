@@ -11,31 +11,6 @@ function promiseAWrapper( func ) {
 jQuery.extend({
 
 	Deferred: function( func ) {
-		function pipe( /* fnDone, fnFail, fnProgress */ ) {
-			var fns = arguments;
-			return jQuery.Deferred(function( newDefer ) {
-				jQuery.each( tuples, function( i, tuple ) {
-					var action = tuple[ 0 ],
-						fn = fns[ i ];
-					// deferred[ done | fail | progress ] for forwarding actions to newDefer
-					deferred[ tuple[1] ]( jQuery.isFunction( fn ) ?
-						function() {
-							var returned = fn.apply( this, arguments );
-							if ( returned && jQuery.isFunction( returned.promise ) ) {
-								returned.promise()
-									.done( newDefer.resolve )
-									.fail( newDefer.reject )
-									.progress( newDefer.notify );
-							} else {
-								newDefer[ action + "With" ]( this === deferred ? newDefer : this, [ returned ] );
-							}
-						} :
-						newDefer[ action ]
-					);
-				});
-				fns = null;
-			}).promise();
-		}
 		var tuples = [
 				// action, add listener, listener list, final state
 				[ "resolve", "done", jQuery.Callbacks("once memory"), "resolved" ],
@@ -62,6 +37,32 @@ jQuery.extend({
 				}
 			},
 			deferred = {};
+
+		function pipe( /* fnDone, fnFail, fnProgress */ ) {
+			var fns = arguments;
+			return jQuery.Deferred(function( newDefer ) {
+				jQuery.each( tuples, function( i, tuple ) {
+					var action = tuple[ 0 ],
+						fn = fns[ i ];
+					// deferred[ done | fail | progress ] for forwarding actions to newDefer
+					deferred[ tuple[1] ]( jQuery.isFunction( fn ) ?
+						function() {
+							var returned = fn.apply( this, arguments );
+							if ( returned && jQuery.isFunction( returned.promise ) ) {
+								returned.promise()
+									.done( newDefer.resolve )
+									.fail( newDefer.reject )
+									.progress( newDefer.notify );
+							} else {
+								newDefer[ action + "With" ]( this === deferred ? newDefer : this, [ returned ] );
+							}
+						} :
+						newDefer[ action ]
+					);
+				});
+				fns = null;
+			}).promise();
+		}
 
 		// Add list-specific methods
 		jQuery.each( tuples, function( i, tuple ) {
