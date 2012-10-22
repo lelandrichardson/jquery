@@ -8,6 +8,19 @@ function promiseAWrapper( func ) {
 	};
 }
 
+function attachToPromise( object, fnDone, fnFail, fnProgress ) {
+	if ( object ) {
+		if ( jQuery.isFunction( object.promise ) ) {
+			object = object.promise();
+			object.done( fnDone ).fail( fnFail ).progress( fnProgress );
+			return true;
+		} else if ( jQuery.isFunction( object.then ) ) {
+			object.then( fnDone, fnFail, fnProgress );
+			return true;
+		}
+	}
+}
+
 jQuery.extend({
 
 	Deferred: function( func ) {
@@ -48,12 +61,12 @@ jQuery.extend({
 					deferred[ tuple[1] ]( jQuery.isFunction( fn ) ?
 						function() {
 							var returned = fn.apply( this, arguments );
-							if ( returned && jQuery.isFunction( returned.promise ) ) {
-								returned.promise()
-									.done( newDefer.resolve )
-									.fail( newDefer.reject )
-									.progress( newDefer.notify );
-							} else {
+							if ( !attachToPromise(
+								returned,
+								newDefer.resolve,
+								newDefer.reject,
+								newDefer.notify
+							) ) {
 								newDefer[ action + "With" ]( this === deferred ? newDefer : this, [ returned ] );
 							}
 						} :
@@ -132,12 +145,12 @@ jQuery.extend({
 			progressContexts = new Array( length );
 			resolveContexts = new Array( length );
 			for ( ; i < length; i++ ) {
-				if ( resolveValues[ i ] && jQuery.isFunction( resolveValues[ i ].promise ) ) {
-					resolveValues[ i ].promise()
-						.done( updateFunc( i, resolveContexts, resolveValues ) )
-						.fail( deferred.reject )
-						.progress( updateFunc( i, progressContexts, progressValues ) );
-				} else {
+				if ( !attachToPromise(
+					resolveValues[ i ],
+					updateFunc( i, resolveContexts, resolveValues ),
+					deferred.reject,
+					updateFunc( i, progressContexts, progressValues )
+				) ) {
 					--remaining;
 				}
 			}
